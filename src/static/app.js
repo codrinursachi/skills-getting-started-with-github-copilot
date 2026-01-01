@@ -19,9 +19,32 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
-        const participantsList = details.participants.length > 0
-          ? details.participants.map(p => `<li><span class="participant-name">${p}</span><button class="delete-btn" data-activity="${name}" data-email="${p}" title="Remove participant">✕</button></li>`).join('')
-          : '<li><em>No participants yet</em></li>';
+        
+        // Create participants list with XSS protection
+        let participantsList = '<li><em>No participants yet</em></li>';
+        if (details.participants.length > 0) {
+          const participantItems = details.participants.map(p => {
+            const li = document.createElement('li');
+            
+            const span = document.createElement('span');
+            span.className = 'participant-name';
+            span.textContent = p; // Use textContent to prevent XSS
+            
+            const button = document.createElement('button');
+            button.className = 'delete-btn';
+            button.setAttribute('data-activity', name);
+            button.setAttribute('data-email', p);
+            button.setAttribute('title', 'Remove participant');
+            button.setAttribute('aria-label', `Remove ${p} from ${name}`);
+            button.textContent = '✕';
+            
+            li.appendChild(span);
+            li.appendChild(button);
+            
+            return li.outerHTML;
+          });
+          participantsList = participantItems.join('');
+        }
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -102,9 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.className = "success";
         signupForm.reset();
         // Refresh the activities list to show the new participant
-        setTimeout(() => {
-          fetchActivities();
-        }, 500);
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
