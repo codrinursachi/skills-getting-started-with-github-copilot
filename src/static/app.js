@@ -20,77 +20,102 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         
-        // Create participants list with XSS protection
-        let participantsList = '<li><em>No participants yet</em></li>';
+        // Create activity name heading
+        const heading = document.createElement('h4');
+        heading.textContent = name;
+        activityCard.appendChild(heading);
+        
+        // Create description paragraph
+        const descPara = document.createElement('p');
+        descPara.textContent = details.description;
+        activityCard.appendChild(descPara);
+        
+        // Create schedule paragraph
+        const schedulePara = document.createElement('p');
+        const scheduleStrong = document.createElement('strong');
+        scheduleStrong.textContent = 'Schedule: ';
+        schedulePara.appendChild(scheduleStrong);
+        schedulePara.appendChild(document.createTextNode(details.schedule));
+        activityCard.appendChild(schedulePara);
+        
+        // Create availability paragraph
+        const availPara = document.createElement('p');
+        const availStrong = document.createElement('strong');
+        availStrong.textContent = 'Availability: ';
+        availPara.appendChild(availStrong);
+        availPara.appendChild(document.createTextNode(spotsLeft + ' spots left'));
+        activityCard.appendChild(availPara);
+        
+        // Create participants section
+        const participantsDiv = document.createElement('div');
+        participantsDiv.className = 'participants-section';
+        
+        const participantsLabel = document.createElement('strong');
+        participantsLabel.textContent = 'Participants:';
+        participantsDiv.appendChild(participantsLabel);
+        
+        const participantsList = document.createElement('ul');
+        participantsList.className = 'participants-list';
+        
         if (details.participants.length > 0) {
-          const participantItems = details.participants.map(p => {
+          details.participants.forEach(p => {
             const li = document.createElement('li');
             
             const span = document.createElement('span');
             span.className = 'participant-name';
-            span.textContent = p; // Use textContent to prevent XSS
+            span.textContent = p;
             
             const button = document.createElement('button');
             button.className = 'delete-btn';
             button.setAttribute('data-activity', name);
             button.setAttribute('data-email', p);
             button.setAttribute('title', 'Remove participant');
-            // Use string concatenation instead of template literals for aria-label
             button.setAttribute('aria-label', 'Remove ' + p + ' from ' + name);
             button.textContent = '✕';
             
+            // Add click event listener
+            button.addEventListener("click", async (e) => {
+              e.preventDefault();
+              const activity = button.getAttribute("data-activity");
+              const email = button.getAttribute("data-email");
+
+              try {
+                const response = await fetch(
+                  `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+                  {
+                    method: "POST",
+                  }
+                );
+
+                if (response.ok) {
+                  // Refresh the activities list
+                  fetchActivities();
+                } else {
+                  const error = await response.json();
+                  alert(error.detail || "Failed to unregister participant");
+                }
+              } catch (error) {
+                alert("Failed to unregister participant. Please try again.");
+                console.error("Error unregistering:", error);
+              }
+            });
+            
             li.appendChild(span);
             li.appendChild(button);
-            
-            return li.outerHTML;
+            participantsList.appendChild(li);
           });
-          participantsList = participantItems.join('');
+        } else {
+          const li = document.createElement('li');
+          const em = document.createElement('em');
+          em.textContent = 'No participants yet';
+          li.appendChild(em);
+          participantsList.appendChild(li);
         }
-
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants-section">
-            <strong>Participants:</strong>
-            <ul class="participants-list">
-              ${participantsList}
-            </ul>
-          </div>
-        `;
+        
+        participantsDiv.appendChild(participantsList);
+        activityCard.appendChild(participantsDiv);
 
         activitiesList.appendChild(activityCard);
-
-        // Add delete button event listeners
-        const deleteButtons = activityCard.querySelectorAll(".delete-btn");
-        deleteButtons.forEach(btn => {
-          btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            const activity = btn.getAttribute("data-activity");
-            const email = btn.getAttribute("data-email");
-
-            try {
-              const response = await fetch(
-                `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
-                {
-                  method: "POST",
-                }
-              );
-
-              if (response.ok) {
-                // Refresh the activities list
-                fetchActivities();
-              } else {
-                const error = await response.json();
-                alert(error.detail || "Failed to unregister participant");
-              }
-            } catch (error) {
-              alert("Failed to unregister participant. Please try again.");
-              console.error("Error unregistering:", error);
-            }
-          });
-        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
