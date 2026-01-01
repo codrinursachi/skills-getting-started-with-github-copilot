@@ -3,6 +3,7 @@ Tests for the Mergington High School Activities API
 """
 
 import pytest
+import copy
 from fastapi.testclient import TestClient
 import sys
 from pathlib import Path
@@ -22,19 +23,11 @@ def client():
 @pytest.fixture
 def reset_activities():
     """Reset activities to initial state after each test"""
-    original_activities = {
-        name: {
-            "description": details["description"],
-            "schedule": details["schedule"],
-            "max_participants": details["max_participants"],
-            "participants": details["participants"].copy()
-        }
-        for name, details in activities.items()
-    }
+    original_activities = copy.deepcopy(activities)
     yield
     # Reset after test
     for name in activities:
-        activities[name]["participants"] = original_activities[name]["participants"].copy()
+        activities[name]["participants"] = copy.deepcopy(original_activities[name]["participants"])
 
 
 class TestGetActivities:
@@ -127,6 +120,37 @@ class TestSignup:
         assert email in activities_data["Chess Club"]["participants"]
         assert email in activities_data["Programming Class"]["participants"]
 
+    def test_signup_max_participants_reached(self, client, reset_activities):
+        """Test that signups are rejected when activity reaches max capacity"""
+        # Get Chess Club which has max_participants of 12
+        activities_response = client.get("/activities")
+        chess_club = activities_response.json()["Chess Club"]
+        max_participants = chess_club["max_participants"]
+        current_participants = len(chess_club["participants"])
+        
+        # Sign up students until we reach max capacity
+        spots_available = max_participants - current_participants
+        for i in range(spots_available):
+            response = client.post(
+                f"/activities/Chess%20Club/signup?email=student{i}@mergington.edu"
+            )
+            assert response.status_code == 200
+        
+        # Try to sign up one more student (should fail)
+        response = client.post(
+            "/activities/Chess%20Club/signup?email=overflow@mergington.edu"
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "maximum capacity" in data["detail"]
+
+    def test_signup_empty_email(self, client):
+        """Test that signup with empty email is rejected"""
+        response = client.post("/activities/Chess%20Club/signup?email=")
+        assert response.status_code == 400
+        data = response.json()
+        assert "Email is required" in data["detail"]
+
 
 class TestUnregister:
     """Tests for POST /activities/{activity_name}/unregister endpoint"""
@@ -170,6 +194,13 @@ class TestUnregister:
         assert response.status_code == 404
         data = response.json()
         assert "Activity not found" in data["detail"]
+
+    def test_unregister_empty_email(self, client):
+        """Test that unregister with empty email is rejected"""
+        response = client.post("/activities/Chess%20Club/unregister?email=")
+        assert response.status_code == 400
+        data = response.json()
+        assert "Email is required" in data["detail"]
 
 
 class TestIntegration:
