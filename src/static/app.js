@@ -35,7 +35,8 @@ document.addEventListener("DOMContentLoaded", () => {
             button.setAttribute('data-activity', name);
             button.setAttribute('data-email', p);
             button.setAttribute('title', 'Remove participant');
-            button.setAttribute('aria-label', `Remove ${p} from ${name}`);
+            // Use string concatenation instead of template literals for aria-label
+            button.setAttribute('aria-label', 'Remove ' + p + ' from ' + name);
             button.textContent = '✕';
             
             li.appendChild(span);

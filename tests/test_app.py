@@ -27,7 +27,7 @@ def reset_activities():
     yield
     # Reset after test
     for name in activities:
-        activities[name]["participants"] = original_activities[name]["participants"][:]
+        activities[name]["participants"] = copy.deepcopy(original_activities[name]["participants"])
 
 
 class TestGetActivities:
