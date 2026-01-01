@@ -70,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
             button.setAttribute('data-activity', name);
             button.setAttribute('data-email', p);
             button.setAttribute('title', 'Remove participant');
+            // setAttribute automatically escapes values, preventing XSS
             button.setAttribute('aria-label', 'Remove ' + p + ' from ' + name);
             button.textContent = '✕';
             

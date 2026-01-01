@@ -3,6 +3,7 @@ Tests for the Mergington High School Activities API
 """
 
 import pytest
+import copy
 from fastapi.testclient import TestClient
 import sys
 from pathlib import Path
@@ -22,7 +23,6 @@ def client():
 @pytest.fixture
 def reset_activities():
     """Reset activities to initial state after each test"""
-    import copy
     original_activities = copy.deepcopy(activities)
     yield
     # Reset after test
